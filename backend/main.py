@@ -1,5 +1,13 @@
 import os
+import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
+
+# Ensure backend directory is in sys.path so relative imports work when invoked from repo root or serverless environments
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
@@ -20,8 +28,11 @@ from routers.settings import router as settings_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure tables exist and seed demo database
-    Base.metadata.create_all(bind=engine)
-    seed_database()
+    try:
+        Base.metadata.create_all(bind=engine)
+        seed_database()
+    except Exception as e:
+        print(f"Database initialization notice: {e}")
     yield
 
 
@@ -31,6 +42,13 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Eagerly ensure database tables exist for serverless runtimes that may bypass lifespan
+try:
+    Base.metadata.create_all(bind=engine)
+    seed_database()
+except Exception as e:
+    pass
 
 # Enable CORS for frontend
 app.add_middleware(

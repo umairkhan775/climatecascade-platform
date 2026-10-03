@@ -15,8 +15,17 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
-REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "reports")
-os.makedirs(REPORTS_DIR, exist_ok=True)
+is_serverless = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+if is_serverless:
+    REPORTS_DIR = os.path.join("/tmp", "reports")
+else:
+    REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "reports")
+
+try:
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+except OSError:
+    REPORTS_DIR = os.path.join("/tmp", "reports")
+    os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
 class ReportService:
