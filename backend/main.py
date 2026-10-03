@@ -3,15 +3,24 @@ import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-# Ensure backend directory is in sys.path so relative imports work when invoked from repo root or serverless environments
+# Ensure backend directory and parent directory are in sys.path so relative imports work
 BACKEND_DIR = Path(__file__).resolve().parent
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
+REPO_ROOT = BACKEND_DIR.parent
+for path in [str(BACKEND_DIR), str(REPO_ROOT)]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from utils.seed_data import seed_database
+
+def init_db():
+    try:
+        from utils.seed_data import seed_database
+        Base.metadata.create_all(bind=engine)
+        seed_database()
+    except Exception as e:
+        print(f"Database initialization notice: {e}")
 
 # Routers
 from routers.dashboard import router as dashboard_router
@@ -28,11 +37,7 @@ from routers.settings import router as settings_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure tables exist and seed demo database
-    try:
-        Base.metadata.create_all(bind=engine)
-        seed_database()
-    except Exception as e:
-        print(f"Database initialization notice: {e}")
+    init_db()
     yield
 
 
@@ -44,11 +49,7 @@ app = FastAPI(
 )
 
 # Eagerly ensure database tables exist for serverless runtimes that may bypass lifespan
-try:
-    Base.metadata.create_all(bind=engine)
-    seed_database()
-except Exception as e:
-    pass
+init_db()
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -61,8 +62,14 @@ app.add_middleware(
 
 # Health Check
 @app.get("/api/health", tags=["Health"])
+@app.get("/health", tags=["Health"])
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/", tags=["Root"])
+def root():
+    return {"status": "ok", "service": "ClimateCascade API"}
 
 
 # Include Routers

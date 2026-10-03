@@ -31,7 +31,8 @@ else:
         DATA_DIR = os.path.join(tempfile.gettempdir(), "climatecascade")
         os.makedirs(DATA_DIR, exist_ok=True)
 
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(DATA_DIR, 'climatecascade.db')}")
+db_file_path = os.path.join(DATA_DIR, 'climatecascade.db').replace('\\', '/')
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_file_path}")
 
 engine = create_engine(
     DATABASE_URL,
